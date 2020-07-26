@@ -74,7 +74,7 @@ pragma(inline) {
 		colliders.boxes.data[collider].size[0] = cx;
 		colliders.boxes.data[collider].size[1] = cy;
 		colliders.boxes.data[collider].size[2] = cz;
-		colliders.boxes.tags[collider] = cast(ushort) collider;
+		colliders.boxes.tags[collider] = collider;
 
 		return new_body;
 	}
@@ -103,7 +103,7 @@ pragma(inline) {
 		colliders.spheres.transforms[collider].body = new_body;
 
 		colliders.spheres.data[collider].radius = radius;
-		colliders.spheres.tags[collider] = cast(ushort) (collider + max_box_count);
+		colliders.spheres.tags[collider] = collider + max_box_count;
 
 		return new_body;
 	}
@@ -187,7 +187,7 @@ void dump() {
 		position[1] += bodies.transforms[body].position[1];
 		position[2] += bodies.transforms[body].position[2];
 
-		writefln("cube: pos(%s), rot(%s), scale(%s)", position, rotation, scale);
+		// writefln("cube: pos(%s), rot(%s), scale(%s)", position, rotation, scale);
 	}
 
 	// Render spheres.
@@ -209,7 +209,7 @@ void dump() {
 		position[1] += bodies.transforms[body].position[1];
 		position[2] += bodies.transforms[body].position[2];
 
-		writefln("sphere: pos(%s), rot(%s), scale(%s)", position, rotation, scale);
+		// writefln("sphere: pos(%s), rot(%s), scale(%s)", position, rotation, scale);
 	}
 }
 
@@ -232,13 +232,13 @@ void main() {
 
 	colliders.boxes.data = cast(nudge.BoxCollider*)(
 			malloc(nudge.BoxCollider.sizeof * max_box_count));
-	colliders.boxes.tags = cast(ushort*)(malloc(ushort.sizeof * max_box_count));
+	colliders.boxes.tags = cast(uint*)(malloc(ushort.sizeof * max_box_count));
 	colliders.boxes.transforms = cast(nudge.Transform*)(
 			malloc(nudge.Transform.sizeof * max_box_count));
 
 	colliders.spheres.data = cast(nudge.SphereCollider*)(
 			malloc(nudge.SphereCollider.sizeof * max_sphere_count));
-	colliders.spheres.tags = cast(ushort*)(malloc(ushort.sizeof * max_sphere_count));
+	colliders.spheres.tags = cast(uint*)(malloc(ushort.sizeof * max_sphere_count));
 	colliders.spheres.transforms = cast(nudge.Transform*)(
 			malloc(nudge.Transform.sizeof * max_sphere_count));
 
@@ -259,9 +259,8 @@ void main() {
 	bodies.idle_counters[0] = 0;
 	bodies.transforms[0] = identity_transform;
 
-	// dlang already zeroes memory for us
-	// memset(bodies.momentum, 0, sizeof(bodies.momentum[0]));
-	// memset(bodies.properties, 0, sizeof(bodies.properties[0]));
+	memset(bodies.momentum, 0, bodies.momentum[0].sizeof);
+	memset(bodies.properties, 0, bodies.properties[0].sizeof);
 
 	// Add ground.
 	{
@@ -273,7 +272,7 @@ void main() {
 		colliders.boxes.data[collider].size[0] = 400.0f;
 		colliders.boxes.data[collider].size[1] = 10.0f;
 		colliders.boxes.data[collider].size[2] = 400.0f;
-		colliders.boxes.tags[collider] = cast(ushort) collider;
+		colliders.boxes.tags[collider] = collider;
 	}
 
 	// Add boxes.
@@ -282,28 +281,33 @@ void main() {
 		float sy = cast(float) rand() * (1.0f / cast(float) RAND_MAX) + 0.5f;
 		float sz = cast(float) rand() * (1.0f / cast(float) RAND_MAX) + 0.5f;
 
-		uint body = add_box(8.0f * sx * sy * sz, sx, sy, sz);
+		uint new_body = add_box(8.0f * sx * sy * sz, sx, sy, sz);
 
-		bodies.transforms[body].position[0] += cast(float) rand() * (
+		bodies.transforms[new_body].position[0] += cast(float) rand() * (
 				1.0f / cast(float) RAND_MAX) * 10.0f - 5.0f;
-		bodies.transforms[body].position[1] += cast(float) rand() * (
+		bodies.transforms[new_body].position[1] += cast(float) rand() * (
 				1.0f / cast(float) RAND_MAX) * 300.0f;
-		bodies.transforms[body].position[2] += cast(float) rand() * (
+		bodies.transforms[new_body].position[2] += cast(float) rand() * (
 				1.0f / cast(float) RAND_MAX) * 10.0f - 5.0f;
+
+		writefln("created box: %s, %s", bodies.properties[new_body], bodies.transforms[new_body]);
 	}
 
 	// Add spheres.
 	for (uint i = 0; i < 512; ++i) {
 		float s = cast(float) rand() * (1.0f / cast(float) RAND_MAX) + 0.5f;
 
-		uint body = add_sphere(4.18879f * s * s * s, s);
+		uint new_body = add_sphere(4.18879f * s * s * s, s);
 
-		bodies.transforms[body].position[0] += cast(float) rand() * (
+		bodies.transforms[new_body].position[0] += cast(float) rand() * (
 				1.0f / cast(float) RAND_MAX) * 10.0f - 5.0f;
-		bodies.transforms[body].position[1] += cast(float) rand() * (
+		bodies.transforms[new_body].position[1] += cast(float) rand() * (
 				1.0f / cast(float) RAND_MAX) * 300.0f;
-		bodies.transforms[body].position[2] += cast(float) rand() * (
+		bodies.transforms[new_body].position[2] += cast(float) rand() * (
 				1.0f / cast(float) RAND_MAX) * 10.0f - 5.0f;
+
+		writefln("created sphere: %s, %s", bodies.properties[new_body],
+				bodies.transforms[new_body]);
 	}
 
 	while (true) {

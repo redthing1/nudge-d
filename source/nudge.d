@@ -57,14 +57,14 @@ extern (C++,nudge) {
     }
 
     struct ColliderDataBoxes {
-        ushort* tags;
+        uint* tags;
         BoxCollider* data;
         Transform* transforms;
         uint count;
     }
 
     struct ColliderDataSpheres {
-        ushort* tags;
+        uint* tags;
         SphereCollider* data;
         Transform* transforms;
         uint count;

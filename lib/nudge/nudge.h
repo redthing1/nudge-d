@@ -83,14 +83,14 @@ namespace nudge {
 	
 	struct ColliderData {
 		struct {
-			uint16_t* tags;
+			uint32_t* tags;
 			BoxCollider* data;
 			Transform* transforms;
 			uint32_t count;
 		} boxes;
 		
 		struct {
-			uint16_t* tags;
+			uint32_t* tags;
 			SphereCollider* data;
 			Transform* transforms;
 			uint32_t count;
