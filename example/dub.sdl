@@ -1,0 +1,7 @@
+name "example"
+description "nudge-d example"
+authors "xdrie"
+copyright "Copyright © 2020, xdrie"
+license "mit"
+dependency "nudge-d" path=".."
+lflags "-L../lib/nudge/build"
