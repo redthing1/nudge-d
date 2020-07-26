@@ -22,14 +22,14 @@ static nudge.ContactCache contact_cache;
 static nudge.ActiveBodies active_bodies;
 
 pragma(inline) {
-	static void quaternion_concat(float[4] r, const float[4] a, const float[4] b) {
+	static void quaternion_concat(ref float[4] r, const float[4] a, const float[4] b) {
 		r[0] = b[0] * a[3] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1];
 		r[1] = b[1] * a[3] + a[1] * b[3] + a[2] * b[0] - a[0] * b[2];
 		r[2] = b[2] * a[3] + a[2] * b[3] + a[0] * b[1] - a[1] * b[0];
 		r[3] = a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2];
 	}
 
-	static void quaternion_transform(float[3] r, const float[4] a, const float[3] b) {
+	static void quaternion_transform(ref float[3] r, const float[4] a, const float[3] b) {
 		float[3] t;
 		t[0] = a[1] * b[2] - a[2] * b[1];
 		t[1] = a[2] * b[0] - a[0] * b[2];
@@ -170,7 +170,7 @@ void simulate() {
 void dump() {
 	// Render boxes.
 	for (uint i = 0; i < colliders.boxes.count; ++i) {
-		uint body = colliders.boxes.transforms[i].body;
+		uint c_body = colliders.boxes.transforms[i].body;
 
 		float[3] scale;
 		float[4] rotation;
@@ -178,21 +178,21 @@ void dump() {
 
 		memcpy(cast(void*) scale, cast(void*) colliders.boxes.data[i].size, scale.sizeof);
 
-		quaternion_concat(rotation, bodies.transforms[body].rotation,
+		quaternion_concat(rotation, bodies.transforms[c_body].rotation,
 				colliders.boxes.transforms[i].rotation);
-		quaternion_transform(position, bodies.transforms[body].rotation,
+		quaternion_transform(position, bodies.transforms[c_body].rotation,
 				colliders.boxes.transforms[i].position);
 
-		position[0] += bodies.transforms[body].position[0];
-		position[1] += bodies.transforms[body].position[1];
-		position[2] += bodies.transforms[body].position[2];
+		position[0] += bodies.transforms[c_body].position[0];
+		position[1] += bodies.transforms[c_body].position[1];
+		position[2] += bodies.transforms[c_body].position[2];
 
-		// writefln("cube: pos(%s), rot(%s), scale(%s)", position, rotation, scale);
+		writefln("cube: pos(%s), rot(%s), scale(%s)", position, rotation, scale);
 	}
 
 	// Render spheres.
 	for (uint i = 0; i < colliders.spheres.count; ++i) {
-		uint body = colliders.spheres.transforms[i].body;
+		uint c_body = colliders.spheres.transforms[i].body;
 
 		float[3] scale;
 		float[4] rotation;
@@ -200,16 +200,16 @@ void dump() {
 
 		scale[0] = scale[1] = scale[2] = colliders.spheres.data[i].radius;
 
-		quaternion_concat(rotation, bodies.transforms[body].rotation,
+		quaternion_concat(rotation, bodies.transforms[c_body].rotation,
 				colliders.spheres.transforms[i].rotation);
-		quaternion_transform(position, bodies.transforms[body].rotation,
+		quaternion_transform(position, bodies.transforms[c_body].rotation,
 				colliders.spheres.transforms[i].position);
 
-		position[0] += bodies.transforms[body].position[0];
-		position[1] += bodies.transforms[body].position[1];
-		position[2] += bodies.transforms[body].position[2];
+		position[0] += bodies.transforms[c_body].position[0];
+		position[1] += bodies.transforms[c_body].position[1];
+		position[2] += bodies.transforms[c_body].position[2];
 
-		// writefln("sphere: pos(%s), rot(%s), scale(%s)", position, rotation, scale);
+		writefln("sphere: pos(%s), rot(%s), scale(%s)", position, rotation, scale);
 	}
 }
 
