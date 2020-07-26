@@ -1,0 +1,5 @@
+name "nudge-d"
+description "nudge (optimized physics library) bindings for Dlang"
+authors "xdrie"
+license "mit"
+copyright "Copyright © 2020, xdrie"
