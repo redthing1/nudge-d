@@ -31,72 +31,6 @@ pragma(inline) {
 		r[1] = b[1] + a[3] * t[1] + a[2] * t[0] - a[0] * t[2];
 		r[2] = b[2] + a[3] * t[2] + a[0] * t[1] - a[1] * t[0];
 	}
-
-	static uint add_box(float mass, float cx, float cy, float cz) {
-		if (realm.bodies.count == realm.max_bodies || realm.colliders.boxes.count == realm
-				.max_boxes)
-			return 0;
-
-		uint new_body = realm.bodies.count++;
-		uint collider = realm.colliders.boxes.count++;
-
-		float k = mass * (1.0f / 3.0f);
-
-		float kcx2 = k * cx * cx;
-		float kcy2 = k * cy * cy;
-		float kcz2 = k * cz * cz;
-
-		nudge.BodyProperties properties = {};
-		properties.mass_inverse = 1.0f / mass;
-		properties.inertia_inverse[0] = 1.0f / (kcy2 + kcz2);
-		properties.inertia_inverse[1] = 1.0f / (kcx2 + kcz2);
-		properties.inertia_inverse[2] = 1.0f / (kcx2 + kcy2);
-
-		memset(&realm.bodies.momentum[new_body], 0, realm.bodies.momentum[new_body].sizeof);
-		realm.bodies.idle_counters[new_body] = 0;
-		realm.bodies.properties[new_body] = properties;
-		realm.bodies.transforms[new_body] = NudgeRealm.identity_transform;
-
-		realm.colliders.boxes.transforms[collider] = NudgeRealm.identity_transform;
-		realm.colliders.boxes.transforms[collider].body = new_body;
-
-		realm.colliders.boxes.data[collider].size[0] = cx;
-		realm.colliders.boxes.data[collider].size[1] = cy;
-		realm.colliders.boxes.data[collider].size[2] = cz;
-		realm.colliders.boxes.tags[collider] = collider;
-
-		return new_body;
-	}
-
-	static uint add_sphere(float mass, float radius) {
-		if (realm.bodies.count == realm.max_bodies
-				|| realm.colliders.spheres.count == realm.max_spheres)
-			return 0;
-
-		uint new_body = realm.bodies.count++;
-		uint collider = realm.colliders.spheres.count++;
-
-		float k = 2.5f / (mass * radius * radius);
-
-		nudge.BodyProperties properties = {};
-		properties.mass_inverse = 1.0f / mass;
-		properties.inertia_inverse[0] = k;
-		properties.inertia_inverse[1] = k;
-		properties.inertia_inverse[2] = k;
-
-		memset(&realm.bodies.momentum[new_body], 0, realm.bodies.momentum[new_body].sizeof);
-		realm.bodies.idle_counters[new_body] = 0;
-		realm.bodies.properties[new_body] = properties;
-		realm.bodies.transforms[new_body] = NudgeRealm.identity_transform;
-
-		realm.colliders.spheres.transforms[collider] = NudgeRealm.identity_transform;
-		realm.colliders.spheres.transforms[collider].body = new_body;
-
-		realm.colliders.spheres.data[collider].radius = radius;
-		realm.colliders.spheres.tags[collider] = collider + realm.max_boxes;
-
-		return new_body;
-	}
 }
 
 void simulate() {
@@ -237,7 +171,7 @@ void main() {
 		float sy = cast(float) rand() * (1.0f / cast(float) RAND_MAX) + 0.5f;
 		float sz = cast(float) rand() * (1.0f / cast(float) RAND_MAX) + 0.5f;
 
-		uint new_body = add_box(8.0f * sx * sy * sz, sx, sy, sz);
+		uint new_body = realm.add_box(8.0f * sx * sy * sz, sx, sy, sz);
 
 		realm.bodies.transforms[new_body].position[0] += cast(float) rand() * (
 				1.0f / cast(float) RAND_MAX) * 10.0f - 5.0f;
@@ -254,7 +188,7 @@ void main() {
 	for (uint i = 0; i < 512; ++i) {
 		float s = cast(float) rand() * (1.0f / cast(float) RAND_MAX) + 0.5f;
 
-		uint new_body = add_sphere(4.18879f * s * s * s, s);
+		uint new_body = realm.add_sphere(4.18879f * s * s * s, s);
 
 		realm.bodies.transforms[new_body].position[0] += cast(float) rand() * (
 				1.0f / cast(float) RAND_MAX) * 10.0f - 5.0f;

@@ -1,6 +1,7 @@
 module nudge_ext;
 
 import core.memory;
+import core.stdc.string : memset;
 static import nudge;
 
 /// represents a context for nudge
@@ -68,5 +69,73 @@ class NudgeRealm {
     public void destroy() {
         // free the arena data, because we used malloc()
         GC.free(arena.data);
+    }
+
+    pragma(inline) {
+        /// create a box body, and return the id
+        public uint add_box(float mass, float cx, float cy, float cz) {
+            if (bodies.count == max_bodies || colliders.boxes.count == max_boxes)
+                return 0;
+
+            uint new_body = bodies.count++;
+            uint collider = colliders.boxes.count++;
+
+            float k = mass * (1.0f / 3.0f);
+
+            float kcx2 = k * cx * cx;
+            float kcy2 = k * cy * cy;
+            float kcz2 = k * cz * cz;
+
+            nudge.BodyProperties properties = {};
+            properties.mass_inverse = 1.0f / mass;
+            properties.inertia_inverse[0] = 1.0f / (kcy2 + kcz2);
+            properties.inertia_inverse[1] = 1.0f / (kcx2 + kcz2);
+            properties.inertia_inverse[2] = 1.0f / (kcx2 + kcy2);
+
+            memset(&bodies.momentum[new_body], 0, bodies.momentum[new_body].sizeof);
+            bodies.idle_counters[new_body] = 0;
+            bodies.properties[new_body] = properties;
+            bodies.transforms[new_body] = identity_transform;
+
+            colliders.boxes.transforms[collider] = identity_transform;
+            colliders.boxes.transforms[collider].body = new_body;
+
+            colliders.boxes.data[collider].size[0] = cx;
+            colliders.boxes.data[collider].size[1] = cy;
+            colliders.boxes.data[collider].size[2] = cz;
+            colliders.boxes.tags[collider] = collider;
+
+            return new_body;
+        }
+
+        /// create a sphere body, and return the id
+        public uint add_sphere(float mass, float radius) {
+            if (bodies.count == max_bodies || colliders.spheres.count == max_spheres)
+                return 0;
+
+            uint new_body = bodies.count++;
+            uint collider = colliders.spheres.count++;
+
+            float k = 2.5f / (mass * radius * radius);
+
+            nudge.BodyProperties properties = {};
+            properties.mass_inverse = 1.0f / mass;
+            properties.inertia_inverse[0] = k;
+            properties.inertia_inverse[1] = k;
+            properties.inertia_inverse[2] = k;
+
+            memset(&bodies.momentum[new_body], 0, bodies.momentum[new_body].sizeof);
+            bodies.idle_counters[new_body] = 0;
+            bodies.properties[new_body] = properties;
+            bodies.transforms[new_body] = identity_transform;
+
+            colliders.spheres.transforms[collider] = identity_transform;
+            colliders.spheres.transforms[collider].body = new_body;
+
+            colliders.spheres.data[collider].radius = radius;
+            colliders.spheres.tags[collider] = collider + max_boxes;
+
+            return new_body;
+        }
     }
 }
