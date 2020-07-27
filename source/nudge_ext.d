@@ -73,7 +73,7 @@ class NudgeRealm {
 
     pragma(inline) {
         /// create a box body, and return the id
-        public uint add_box(float mass, float cx, float cy, float cz) {
+        public uint add_box(float mass, float collider_x, float collider_y, float collider_z) {
             if (bodies.count == max_bodies || colliders.boxes.count == max_boxes)
                 return 0;
 
@@ -82,9 +82,9 @@ class NudgeRealm {
 
             float k = mass * (1.0f / 3.0f);
 
-            float kcx2 = k * cx * cx;
-            float kcy2 = k * cy * cy;
-            float kcz2 = k * cz * cz;
+            float kcx2 = k * collider_x * collider_x;
+            float kcy2 = k * collider_y * collider_y;
+            float kcz2 = k * collider_z * collider_z;
 
             nudge.BodyProperties properties = {};
             properties.mass_inverse = 1.0f / mass;
@@ -100,9 +100,9 @@ class NudgeRealm {
             colliders.boxes.transforms[collider] = identity_transform;
             colliders.boxes.transforms[collider].body = new_body;
 
-            colliders.boxes.data[collider].size[0] = cx;
-            colliders.boxes.data[collider].size[1] = cy;
-            colliders.boxes.data[collider].size[2] = cz;
+            colliders.boxes.data[collider].size[0] = collider_x;
+            colliders.boxes.data[collider].size[1] = collider_y;
+            colliders.boxes.data[collider].size[2] = collider_z;
             colliders.boxes.tags[collider] = collider;
 
             return new_body;

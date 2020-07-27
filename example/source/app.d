@@ -171,11 +171,12 @@ void main() {
 
 	// Add boxes.
 	for (uint i = 0; i < 1024; ++i) {
-		float sx = rand_float() + 0.5f;
-		float sy = rand_float() + 0.5f;
-		float sz = rand_float() + 0.5f;
+		float collider_x = rand_float() + 0.5f;
+		float collider_y = rand_float() + 0.5f;
+		float collider_z = rand_float() + 0.5f;
 
-		uint new_body = realm.add_box(8.0f * sx * sy * sz, sx, sy, sz);
+		uint new_body = realm.add_box(8.0f * collider_x * collider_y * collider_z,
+				collider_x, collider_y, collider_z);
 
 		realm.bodies.transforms[new_body].position[0] += rand_float() * 10.0f - 5.0f;
 		realm.bodies.transforms[new_body].position[1] += rand_float() * 300.0f;
@@ -187,9 +188,9 @@ void main() {
 
 	// Add spheres.
 	for (uint i = 0; i < 512; ++i) {
-		float s = rand_float() + 0.5f;
+		float radius = rand_float() + 0.5f;
 
-		uint new_body = realm.add_sphere(4.18879f * s * s * s, s);
+		uint new_body = realm.add_sphere(4.18879f * radius * radius * radius, radius);
 
 		realm.bodies.transforms[new_body].position[0] += rand_float() * 10.0f - 5.0f;
 		realm.bodies.transforms[new_body].position[1] += rand_float() * 300.0f;
