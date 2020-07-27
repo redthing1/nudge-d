@@ -12,8 +12,10 @@ class NudgeRealm {
 
     public size_t arena_size = 64 * 1024 * 1024; // 64M
 
+    public enum float[3] zero_vec = [0, 0, 0];
     public enum nudge.Transform identity_transform = nudge.Transform([0, 0, 0],
                 0, [0.0f, 0.0f, 0.0f, 1.0f]);
+    public enum nudge.BodyMomentum zero_momentum = nudge.BodyMomentum(zero_vec, 0, zero_vec, 0);
 
     public nudge.Arena arena;
     public nudge.BodyData bodies;
@@ -73,8 +75,8 @@ class NudgeRealm {
 
     pragma(inline) {
         /// append a new body, return the id
-        public uint append_body(ref nudge.Transform transform,
-                ref nudge.BodyProperties properties, ref nudge.BodyMomentum momentum) {
+        public uint append_body(nudge.Transform transform,
+                nudge.BodyProperties properties, nudge.BodyMomentum momentum) {
             if (bodies.count >= max_bodies) {
                 assert(0, "max body count exceeded");
             }
@@ -123,8 +125,8 @@ class NudgeRealm {
         }
 
         /// append a box collider and get its index
-        public uint append_box_collider(uint body_id,
-                ref nudge.BoxCollider collider, ref nudge.Transform transform, uint tag) {
+        public uint append_box_collider(uint body_id, nudge.BoxCollider collider,
+                nudge.Transform transform, uint tag = 0) {
             if (colliders.boxes.count >= max_boxes) {
                 assert(0, "max body count exceeded (boxes)");
             }
@@ -168,7 +170,7 @@ class NudgeRealm {
 
         /// append a sphere collider and get its index
         public uint append_sphere_collider(uint body_id,
-                ref nudge.SphereCollider collider, ref nudge.Transform transform, uint tag) {
+                nudge.SphereCollider collider, nudge.Transform transform, uint tag = 0) {
             if (colliders.spheres.count >= max_spheres) {
                 assert(0, "max body count exceeded (spheres)");
             }
@@ -208,96 +210,6 @@ class NudgeRealm {
         /// pop the last sphere collider off
         public void pop_last_sphere_collider() {
             colliders.spheres.count--;
-        }
-
-        /// create a box collider, and return the id
-        public uint add_box(float mass, float collider_x, float collider_y, float collider_z) {
-            if (bodies.count == max_bodies || colliders.boxes.count == max_boxes) {
-                assert(0, "max body count exceeded (boxes)");
-            }
-
-            uint new_body = bodies.count++;
-            uint collider = colliders.boxes.count++;
-
-            // calculate some Very Cool physics stuff
-            float k = mass * (1.0f / 3.0f);
-            float kcx2 = k * collider_x * collider_x;
-            float kcy2 = k * collider_y * collider_y;
-            float kcz2 = k * collider_z * collider_z;
-
-            // set body values
-            nudge.BodyProperties properties = {};
-            properties.mass_inverse = 1.0f / mass;
-            properties.inertia_inverse[0] = 1.0f / (kcy2 + kcz2);
-            properties.inertia_inverse[1] = 1.0f / (kcx2 + kcz2);
-            properties.inertia_inverse[2] = 1.0f / (kcx2 + kcy2);
-            memset(&bodies.momentum[new_body], 0, bodies.momentum[new_body].sizeof);
-            bodies.idle_counters[new_body] = 0;
-            bodies.properties[new_body] = properties;
-            bodies.transforms[new_body] = identity_transform;
-
-            // set collider position
-            colliders.boxes.transforms[collider] = identity_transform;
-            colliders.boxes.transforms[collider].body = new_body;
-
-            // set collider size
-            colliders.boxes.data[collider].size[0] = collider_x;
-            colliders.boxes.data[collider].size[1] = collider_y;
-            colliders.boxes.data[collider].size[2] = collider_z;
-            colliders.boxes.tags[collider] = collider;
-
-            return new_body;
-        }
-
-        // public void remove_box(uint id) {
-        //     // look up collider id
-        //     auto coll_id = 0; // magic
-
-        //     // clear collider size
-        //     colliders.boxes.data[coll_id].size[0] = 0;
-        //     colliders.boxes.data[coll_id].size[1] = 0;
-        //     colliders.boxes.data[coll_id].size[2] = 0;
-
-        //     // clear collider position
-        //     colliders.boxes.transforms[coll_id] = identity_transform;
-        //     colliders.boxes.transforms[coll_id].body = 0;
-
-        //     // clear body values
-        //     // ?
-
-        //     colliders.boxes.count--;
-        //     bodies.count--;
-        // }
-
-        /// create a sphere collider, and return the id
-        public uint add_sphere(float mass, float radius) {
-            if (bodies.count == max_bodies || colliders.spheres.count == max_spheres) {
-                assert(0, "max body count exceeded (spheres)");
-            }
-
-            uint new_body = bodies.count++;
-            uint collider = colliders.spheres.count++;
-
-            float k = 2.5f / (mass * radius * radius);
-
-            nudge.BodyProperties properties = {};
-            properties.mass_inverse = 1.0f / mass;
-            properties.inertia_inverse[0] = k;
-            properties.inertia_inverse[1] = k;
-            properties.inertia_inverse[2] = k;
-
-            memset(&bodies.momentum[new_body], 0, bodies.momentum[new_body].sizeof);
-            bodies.idle_counters[new_body] = 0;
-            bodies.properties[new_body] = properties;
-            bodies.transforms[new_body] = identity_transform;
-
-            colliders.spheres.transforms[collider] = identity_transform;
-            colliders.spheres.transforms[collider].body = new_body;
-
-            colliders.spheres.data[collider].radius = radius;
-            colliders.spheres.tags[collider] = collider + max_boxes;
-
-            return new_body;
         }
     }
 }

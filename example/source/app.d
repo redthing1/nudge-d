@@ -35,6 +35,54 @@ pragma(inline) {
 	static float rand_float() {
 		return cast(float)(rand() * (1.0f / (cast(float) RAND_MAX)));
 	}
+
+	/// create a body with a box collider, and return the id of the body
+	static uint add_demo_box(float mass, float collider_x, float collider_y, float collider_z) {
+		// calculate some Very Cool physics stuff
+		float k = mass * (1.0f / 3.0f);
+		float kcx2 = k * collider_x * collider_x;
+		float kcy2 = k * collider_y * collider_y;
+		float kcz2 = k * collider_z * collider_z;
+
+		// body properties
+		nudge.BodyProperties properties = {};
+		properties.mass_inverse = 1.0f / mass;
+		properties.inertia_inverse[0] = 1.0f / (kcy2 + kcz2);
+		properties.inertia_inverse[1] = 1.0f / (kcx2 + kcz2);
+		properties.inertia_inverse[2] = 1.0f / (kcx2 + kcy2);
+
+		// get a body
+		uint new_body = realm.append_body(NudgeRealm.identity_transform,
+				properties, NudgeRealm.zero_momentum);
+
+		// get a box
+		uint new_box = realm.append_box_collider(new_body, nudge.BoxCollider([
+					collider_x, collider_y, collider_z
+				]), NudgeRealm.identity_transform);
+
+		return new_body;
+	}
+
+	/// create a body with a sphere collider, and return the id of the body
+	static uint add_demo_sphere(float mass, float radius) {
+		float k = 2.5f / (mass * radius * radius);
+
+		nudge.BodyProperties properties = {};
+		properties.mass_inverse = 1.0f / mass;
+		properties.inertia_inverse[0] = k;
+		properties.inertia_inverse[1] = k;
+		properties.inertia_inverse[2] = k;
+
+		// get a body
+		uint new_body = realm.append_body(NudgeRealm.identity_transform,
+				properties, NudgeRealm.zero_momentum);
+
+		// get a sphere
+		uint new_sphere = realm.append_sphere_collider(new_body,
+				nudge.SphereCollider(radius), NudgeRealm.identity_transform);
+
+		return new_body;
+	}
 }
 
 void simulate() {
@@ -175,7 +223,7 @@ void main() {
 		float collider_y = rand_float() + 0.5f;
 		float collider_z = rand_float() + 0.5f;
 
-		uint new_body = realm.add_box(8.0f * collider_x * collider_y * collider_z,
+		uint new_body = add_demo_box(8.0f * collider_x * collider_y * collider_z,
 				collider_x, collider_y, collider_z);
 
 		realm.bodies.transforms[new_body].position[0] += rand_float() * 10.0f - 5.0f;
@@ -190,7 +238,7 @@ void main() {
 	for (uint i = 0; i < 512; ++i) {
 		float radius = rand_float() + 0.5f;
 
-		uint new_body = realm.add_sphere(4.18879f * radius * radius * radius, radius);
+		uint new_body = add_demo_sphere(4.18879f * radius * radius * radius, radius);
 
 		realm.bodies.transforms[new_body].position[0] += rand_float() * 10.0f - 5.0f;
 		realm.bodies.transforms[new_body].position[1] += rand_float() * 300.0f;
