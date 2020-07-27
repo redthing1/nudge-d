@@ -1,3 +1,6 @@
+libnudge*
+nudge-d-test*
+
 # Compiled Object files
 *.o
 *.obj
