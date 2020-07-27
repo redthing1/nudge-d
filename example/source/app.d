@@ -1,25 +1,13 @@
 import std.stdio;
 import core.thread;
 
-// import core.memory;
 import core.stdc.string : memcpy, memset;
 import core.stdc.stdlib : malloc, rand, RAND_MAX;
 
 static import nudge;
+import nudge_ext;
 
-static const uint max_body_count = 2048;
-static const uint max_box_count = 2048;
-static const uint max_sphere_count = 2048;
-
-static const nudge.Transform identity_transform = nudge.Transform([0, 0, 0], 0,
-		[0.0f, 0.0f, 0.0f, 1.0f]);
-
-static nudge.Arena arena;
-static nudge.BodyData bodies;
-static nudge.ColliderData colliders;
-static nudge.ContactData contact_data;
-static nudge.ContactCache contact_cache;
-static nudge.ActiveBodies active_bodies;
+static NudgeRealm realm;
 
 pragma(inline) {
 	static void quaternion_concat(ref float[4] r, const float[4] a, const float[4] b) {
@@ -45,11 +33,12 @@ pragma(inline) {
 	}
 
 	static uint add_box(float mass, float cx, float cy, float cz) {
-		if (bodies.count == max_body_count || colliders.boxes.count == max_box_count)
+		if (realm.bodies.count == realm.max_bodies || realm.colliders.boxes.count == realm
+				.max_boxes)
 			return 0;
 
-		uint new_body = bodies.count++;
-		uint collider = colliders.boxes.count++;
+		uint new_body = realm.bodies.count++;
+		uint collider = realm.colliders.boxes.count++;
 
 		float k = mass * (1.0f / 3.0f);
 
@@ -63,28 +52,29 @@ pragma(inline) {
 		properties.inertia_inverse[1] = 1.0f / (kcx2 + kcz2);
 		properties.inertia_inverse[2] = 1.0f / (kcx2 + kcy2);
 
-		memset(&bodies.momentum[new_body], 0, bodies.momentum[new_body].sizeof);
-		bodies.idle_counters[new_body] = 0;
-		bodies.properties[new_body] = properties;
-		bodies.transforms[new_body] = identity_transform;
+		memset(&realm.bodies.momentum[new_body], 0, realm.bodies.momentum[new_body].sizeof);
+		realm.bodies.idle_counters[new_body] = 0;
+		realm.bodies.properties[new_body] = properties;
+		realm.bodies.transforms[new_body] = NudgeRealm.identity_transform;
 
-		colliders.boxes.transforms[collider] = identity_transform;
-		colliders.boxes.transforms[collider].body = new_body;
+		realm.colliders.boxes.transforms[collider] = NudgeRealm.identity_transform;
+		realm.colliders.boxes.transforms[collider].body = new_body;
 
-		colliders.boxes.data[collider].size[0] = cx;
-		colliders.boxes.data[collider].size[1] = cy;
-		colliders.boxes.data[collider].size[2] = cz;
-		colliders.boxes.tags[collider] = collider;
+		realm.colliders.boxes.data[collider].size[0] = cx;
+		realm.colliders.boxes.data[collider].size[1] = cy;
+		realm.colliders.boxes.data[collider].size[2] = cz;
+		realm.colliders.boxes.tags[collider] = collider;
 
 		return new_body;
 	}
 
 	static uint add_sphere(float mass, float radius) {
-		if (bodies.count == max_body_count || colliders.spheres.count == max_sphere_count)
+		if (realm.bodies.count == realm.max_bodies
+				|| realm.colliders.spheres.count == realm.max_spheres)
 			return 0;
 
-		uint new_body = bodies.count++;
-		uint collider = colliders.spheres.count++;
+		uint new_body = realm.bodies.count++;
+		uint collider = realm.colliders.spheres.count++;
 
 		float k = 2.5f / (mass * radius * radius);
 
@@ -94,16 +84,16 @@ pragma(inline) {
 		properties.inertia_inverse[1] = k;
 		properties.inertia_inverse[2] = k;
 
-		memset(&bodies.momentum[new_body], 0, bodies.momentum[new_body].sizeof);
-		bodies.idle_counters[new_body] = 0;
-		bodies.properties[new_body] = properties;
-		bodies.transforms[new_body] = identity_transform;
+		memset(&realm.bodies.momentum[new_body], 0, realm.bodies.momentum[new_body].sizeof);
+		realm.bodies.idle_counters[new_body] = 0;
+		realm.bodies.properties[new_body] = properties;
+		realm.bodies.transforms[new_body] = NudgeRealm.identity_transform;
 
-		colliders.spheres.transforms[collider] = identity_transform;
-		colliders.spheres.transforms[collider].body = new_body;
+		realm.colliders.spheres.transforms[collider] = NudgeRealm.identity_transform;
+		realm.colliders.spheres.transforms[collider].body = new_body;
 
-		colliders.spheres.data[collider].radius = radius;
-		colliders.spheres.tags[collider] = collider + max_box_count;
+		realm.colliders.spheres.data[collider].radius = radius;
+		realm.colliders.spheres.tags[collider] = collider + realm.max_boxes;
 
 		return new_body;
 	}
@@ -117,42 +107,43 @@ void simulate() {
 
 	for (uint n = 0; n < steps; ++n) {
 		// Setup a temporary memory arena. The same temporary memory is reused each iteration.
-		nudge.Arena temporary = arena;
+		nudge.Arena temporary = realm.arena;
 
 		// Find contacts.
 		nudge.BodyConnections connections = {}; // NOTE: Custom constraints should be added as body connections.
-		nudge.collide(&active_bodies, &contact_data, bodies, colliders, connections, temporary);
+		nudge.collide(&realm.active_bodies, &realm.contact_data,
+				realm.bodies, realm.colliders, connections, temporary);
 
 		// NOTE: Custom contacts can be added here, e.g., against the static environment.
 
 		// Apply gravity and damping.
 		float damping = 1.0f - time_step * 0.25f;
 
-		for (uint i = 0; i < active_bodies.count; ++i) {
-			uint index = active_bodies.indices[i];
+		for (uint i = 0; i < realm.active_bodies.count; ++i) {
+			uint index = realm.active_bodies.indices[i];
 
-			bodies.momentum[index].velocity[1] -= 9.82f * time_step;
+			realm.bodies.momentum[index].velocity[1] -= 9.82f * time_step;
 
-			bodies.momentum[index].velocity[0] *= damping;
-			bodies.momentum[index].velocity[1] *= damping;
-			bodies.momentum[index].velocity[2] *= damping;
+			realm.bodies.momentum[index].velocity[0] *= damping;
+			realm.bodies.momentum[index].velocity[1] *= damping;
+			realm.bodies.momentum[index].velocity[2] *= damping;
 
-			bodies.momentum[index].angular_velocity[0] *= damping;
-			bodies.momentum[index].angular_velocity[1] *= damping;
-			bodies.momentum[index].angular_velocity[2] *= damping;
+			realm.bodies.momentum[index].angular_velocity[0] *= damping;
+			realm.bodies.momentum[index].angular_velocity[1] *= damping;
+			realm.bodies.momentum[index].angular_velocity[2] *= damping;
 		}
 
 		// Read previous impulses from contact cache.
-		nudge.ContactImpulseData* contact_impulses = nudge.read_cached_impulses(contact_cache,
-				contact_data, &temporary);
+		nudge.ContactImpulseData* contact_impulses = nudge.read_cached_impulses(
+				realm.contact_cache, realm.contact_data, &temporary);
 
 		// Setup contact constraints and apply the initial impulses.
-		nudge.ContactConstraintData* contact_constraints = nudge.setup_contact_constraints(
-				active_bodies, contact_data, bodies, contact_impulses, &temporary);
+		nudge.ContactConstraintData* contact_constraints = nudge.setup_contact_constraints(realm.active_bodies,
+				realm.contact_data, realm.bodies, contact_impulses, &temporary);
 
 		// Apply contact impulses. Increasing the number of iterations will improve stability.
 		for (uint i = 0; i < iterations; ++i) {
-			nudge.apply_impulses(contact_constraints, bodies);
+			nudge.apply_impulses(contact_constraints, realm.bodies);
 			// NOTE: Custom constraint impulses should be applied here.
 		}
 
@@ -160,54 +151,54 @@ void simulate() {
 		nudge.update_cached_impulses(contact_constraints, contact_impulses);
 
 		// Write the updated contact impulses to the cache.
-		nudge.write_cached_impulses(&contact_cache, contact_data, contact_impulses);
+		nudge.write_cached_impulses(&realm.contact_cache, realm.contact_data, contact_impulses);
 
 		// Move active bodies.
-		nudge.advance(active_bodies, bodies, time_step);
+		nudge.advance(realm.active_bodies, realm.bodies, time_step);
 	}
 }
 
 void dump() {
 	// Render boxes.
-	for (uint i = 0; i < colliders.boxes.count; ++i) {
-		uint c_body = colliders.boxes.transforms[i].body;
+	for (uint i = 0; i < realm.colliders.boxes.count; ++i) {
+		uint c_body = realm.colliders.boxes.transforms[i].body;
 
 		float[3] scale;
 		float[4] rotation;
 		float[3] position;
 
-		memcpy(cast(void*) scale, cast(void*) colliders.boxes.data[i].size, scale.sizeof);
+		memcpy(cast(void*) scale, cast(void*) realm.colliders.boxes.data[i].size, scale.sizeof);
 
-		quaternion_concat(rotation, bodies.transforms[c_body].rotation,
-				colliders.boxes.transforms[i].rotation);
-		quaternion_transform(position, bodies.transforms[c_body].rotation,
-				colliders.boxes.transforms[i].position);
+		quaternion_concat(rotation, realm.bodies.transforms[c_body].rotation,
+				realm.colliders.boxes.transforms[i].rotation);
+		quaternion_transform(position, realm.bodies.transforms[c_body].rotation,
+				realm.colliders.boxes.transforms[i].position);
 
-		position[0] += bodies.transforms[c_body].position[0];
-		position[1] += bodies.transforms[c_body].position[1];
-		position[2] += bodies.transforms[c_body].position[2];
+		position[0] += realm.bodies.transforms[c_body].position[0];
+		position[1] += realm.bodies.transforms[c_body].position[1];
+		position[2] += realm.bodies.transforms[c_body].position[2];
 
 		writefln("cube: pos(%s), rot(%s), scale(%s)", position, rotation, scale);
 	}
 
 	// Render spheres.
-	for (uint i = 0; i < colliders.spheres.count; ++i) {
-		uint c_body = colliders.spheres.transforms[i].body;
+	for (uint i = 0; i < realm.colliders.spheres.count; ++i) {
+		uint c_body = realm.colliders.spheres.transforms[i].body;
 
 		float[3] scale;
 		float[4] rotation;
 		float[3] position;
 
-		scale[0] = scale[1] = scale[2] = colliders.spheres.data[i].radius;
+		scale[0] = scale[1] = scale[2] = realm.colliders.spheres.data[i].radius;
 
-		quaternion_concat(rotation, bodies.transforms[c_body].rotation,
-				colliders.spheres.transforms[i].rotation);
-		quaternion_transform(position, bodies.transforms[c_body].rotation,
-				colliders.spheres.transforms[i].position);
+		quaternion_concat(rotation, realm.bodies.transforms[c_body].rotation,
+				realm.colliders.spheres.transforms[i].rotation);
+		quaternion_transform(position, realm.bodies.transforms[c_body].rotation,
+				realm.colliders.spheres.transforms[i].position);
 
-		position[0] += bodies.transforms[c_body].position[0];
-		position[1] += bodies.transforms[c_body].position[1];
-		position[2] += bodies.transforms[c_body].position[2];
+		position[0] += realm.bodies.transforms[c_body].position[0];
+		position[1] += realm.bodies.transforms[c_body].position[1];
+		position[2] += realm.bodies.transforms[c_body].position[2];
 
 		writefln("sphere: pos(%s), rot(%s), scale(%s)", position, rotation, scale);
 	}
@@ -215,64 +206,29 @@ void dump() {
 
 void main() {
 	// setup
+	realm = new NudgeRealm(2048, 2048, 2048);
 
-	// Allocate memory for simulation arena.
-	arena.size = 64 * 1024 * 1024;
-	arena.data = malloc(arena.size);
-
-	// Allocate memory for bodies, colliders, and contacts.
-	active_bodies.capacity = max_box_count;
-	active_bodies.indices = cast(ushort*)(malloc(ushort.sizeof * max_body_count));
-
-	bodies.idle_counters = cast(ubyte*)(malloc(ubyte.sizeof * max_body_count));
-	bodies.transforms = cast(nudge.Transform*)(malloc(nudge.Transform.sizeof * max_body_count));
-	bodies.momentum = cast(nudge.BodyMomentum*)(malloc(nudge.BodyMomentum.sizeof * max_body_count));
-	bodies.properties = cast(nudge.BodyProperties*)(
-			malloc(nudge.BodyProperties.sizeof * max_body_count));
-
-	colliders.boxes.data = cast(nudge.BoxCollider*)(
-			malloc(nudge.BoxCollider.sizeof * max_box_count));
-	colliders.boxes.tags = cast(uint*)(malloc(ushort.sizeof * max_box_count));
-	colliders.boxes.transforms = cast(nudge.Transform*)(
-			malloc(nudge.Transform.sizeof * max_box_count));
-
-	colliders.spheres.data = cast(nudge.SphereCollider*)(
-			malloc(nudge.SphereCollider.sizeof * max_sphere_count));
-	colliders.spheres.tags = cast(uint*)(malloc(ushort.sizeof * max_sphere_count));
-	colliders.spheres.transforms = cast(nudge.Transform*)(
-			malloc(nudge.Transform.sizeof * max_sphere_count));
-
-	contact_data.capacity = max_body_count * 64;
-	contact_data.bodies = cast(nudge.BodyPair*)(
-			malloc(nudge.BodyPair.sizeof * contact_data.capacity));
-	contact_data.data = cast(nudge.Contact*)(malloc(nudge.Contact.sizeof * contact_data.capacity));
-	contact_data.tags = cast(ulong*)(malloc(ulong.sizeof * contact_data.capacity));
-	contact_data.sleeping_pairs = cast(uint*)(malloc(uint.sizeof * contact_data.capacity));
-
-	contact_cache.capacity = max_body_count * 64;
-	contact_cache.data = cast(nudge.CachedContactImpulse*)(
-			malloc(nudge.CachedContactImpulse.sizeof * contact_cache.capacity));
-	contact_cache.tags = cast(ulong*)(malloc(ulong.sizeof * contact_cache.capacity));
+	// allocate memory
+	realm.allocate();
 
 	// The first body is the static world.
-	bodies.count = 1;
-	bodies.idle_counters[0] = 0;
-	bodies.transforms[0] = identity_transform;
-
-	memset(bodies.momentum, 0, bodies.momentum[0].sizeof);
-	memset(bodies.properties, 0, bodies.properties[0].sizeof);
+	realm.bodies.count = 1;
+	realm.bodies.idle_counters[0] = 0;
+	realm.bodies.transforms[0] = NudgeRealm.identity_transform;
+	memset(realm.bodies.momentum, 0, realm.bodies.momentum[0].sizeof);
+	memset(realm.bodies.properties, 0, realm.bodies.properties[0].sizeof);
 
 	// Add ground.
 	{
-		uint collider = colliders.boxes.count++;
+		uint collider_ix = realm.colliders.boxes.count++;
 
-		colliders.boxes.transforms[collider] = identity_transform;
-		colliders.boxes.transforms[collider].position[1] -= 20.0f;
+		realm.colliders.boxes.transforms[collider_ix] = NudgeRealm.identity_transform;
+		realm.colliders.boxes.transforms[collider_ix].position[1] -= 20.0f;
 
-		colliders.boxes.data[collider].size[0] = 400.0f;
-		colliders.boxes.data[collider].size[1] = 10.0f;
-		colliders.boxes.data[collider].size[2] = 400.0f;
-		colliders.boxes.tags[collider] = collider;
+		realm.colliders.boxes.data[collider_ix].size[0] = 400.0f;
+		realm.colliders.boxes.data[collider_ix].size[1] = 10.0f;
+		realm.colliders.boxes.data[collider_ix].size[2] = 400.0f;
+		realm.colliders.boxes.tags[collider_ix] = collider_ix;
 	}
 
 	// Add boxes.
@@ -283,14 +239,15 @@ void main() {
 
 		uint new_body = add_box(8.0f * sx * sy * sz, sx, sy, sz);
 
-		bodies.transforms[new_body].position[0] += cast(float) rand() * (
+		realm.bodies.transforms[new_body].position[0] += cast(float) rand() * (
 				1.0f / cast(float) RAND_MAX) * 10.0f - 5.0f;
-		bodies.transforms[new_body].position[1] += cast(float) rand() * (
+		realm.bodies.transforms[new_body].position[1] += cast(float) rand() * (
 				1.0f / cast(float) RAND_MAX) * 300.0f;
-		bodies.transforms[new_body].position[2] += cast(float) rand() * (
+		realm.bodies.transforms[new_body].position[2] += cast(float) rand() * (
 				1.0f / cast(float) RAND_MAX) * 10.0f - 5.0f;
 
-		writefln("created box: %s, %s", bodies.properties[new_body], bodies.transforms[new_body]);
+		writefln("created box: %s, %s", realm.bodies.properties[new_body],
+				realm.bodies.transforms[new_body]);
 	}
 
 	// Add spheres.
@@ -299,15 +256,20 @@ void main() {
 
 		uint new_body = add_sphere(4.18879f * s * s * s, s);
 
-		bodies.transforms[new_body].position[0] += cast(float) rand() * (
+		realm.bodies.transforms[new_body].position[0] += cast(float) rand() * (
 				1.0f / cast(float) RAND_MAX) * 10.0f - 5.0f;
-		bodies.transforms[new_body].position[1] += cast(float) rand() * (
+		realm.bodies.transforms[new_body].position[1] += cast(float) rand() * (
 				1.0f / cast(float) RAND_MAX) * 300.0f;
-		bodies.transforms[new_body].position[2] += cast(float) rand() * (
+		realm.bodies.transforms[new_body].position[2] += cast(float) rand() * (
 				1.0f / cast(float) RAND_MAX) * 10.0f - 5.0f;
 
-		writefln("created sphere: %s, %s", bodies.properties[new_body],
-				bodies.transforms[new_body]);
+		writefln("created sphere: %s, %s", realm.bodies.properties[new_body],
+				realm.bodies.transforms[new_body]);
+	}
+
+	scope (exit) {
+		// cleanup
+		realm.destroy();
 	}
 
 	while (true) {
