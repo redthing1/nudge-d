@@ -10,4 +10,7 @@ project('regular-tools',
 nudge_sources = [
     'nudge.cpp', 'nudge.h'
 ]
-library('nudge', nudge_sources)
+
+nudge_library = library('nudge',
+    nudge_sources,
+    install: true)
