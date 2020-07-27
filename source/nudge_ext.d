@@ -72,34 +72,81 @@ class NudgeRealm {
     }
 
     pragma(inline) {
-        /// create a box body, and return the id
+        /// create a new body, return the id
+        public uint insert_body(ref nudge.Transform transform,
+                ref nudge.BodyProperties properties, ref nudge.BodyMomentum momentum) {
+            if (bodies.count == max_bodies) {
+                assert(0, "max body count exceeded (boxes)");
+            }
+
+            uint id = bodies.count++;
+
+            bodies.transforms[id] = transform;
+            bodies.properties[id] = properties;
+            bodies.momentum[id] = momentum;
+            bodies.idle_counters[id] = 0;
+
+            return id;
+        }
+
+        /// clear the data of a body with matching id
+        public void clear_body(uint id) {
+            // zero out the body
+            bodies.transforms[id] = identity_transform;
+            memset(&bodies.properties[id], 0, bodies.properties[id].sizeof);
+            memset(&bodies.momentum[id], 0, bodies.momentum[id].sizeof);
+            bodies.idle_counters[id] = 0;
+        }
+
+        public void swap_bodies(uint id_src, uint id_dst) {
+            auto tmp_transform = bodies.transforms[id_dst];
+            bodies.transforms[id_dst] = bodies.transforms[id_src];
+            bodies.transforms[id_src] = tmp_transform;
+
+            auto tmp_props = bodies.properties[id_dst];
+            bodies.properties[id_dst] = bodies.properties[id_src];
+            bodies.properties[id_src] = tmp_props;
+
+            auto tmp_momentum = bodies.momentum[id_dst];
+            bodies.momentum[id_dst] = bodies.momentum[id_src];
+            bodies.momentum[id_src] = tmp_momentum;
+
+            auto tmp_idle = bodies.idle_counters[id_dst];
+            bodies.idle_counters[id_dst] = bodies.idle_counters[id_src];
+            bodies.idle_counters[id_src] = tmp_idle;
+        }
+
+        /// create a box collider, and return the id
         public uint add_box(float mass, float collider_x, float collider_y, float collider_z) {
-            if (bodies.count == max_bodies || colliders.boxes.count == max_boxes)
-                return 0;
+            if (bodies.count == max_bodies || colliders.boxes.count == max_boxes) {
+                assert(0, "max body count exceeded (boxes)");
+            }
 
             uint new_body = bodies.count++;
             uint collider = colliders.boxes.count++;
 
+            // calculate some Very Cool physics stuff
             float k = mass * (1.0f / 3.0f);
-
             float kcx2 = k * collider_x * collider_x;
             float kcy2 = k * collider_y * collider_y;
             float kcz2 = k * collider_z * collider_z;
 
+            // set body values
             nudge.BodyProperties properties = {};
             properties.mass_inverse = 1.0f / mass;
             properties.inertia_inverse[0] = 1.0f / (kcy2 + kcz2);
             properties.inertia_inverse[1] = 1.0f / (kcx2 + kcz2);
             properties.inertia_inverse[2] = 1.0f / (kcx2 + kcy2);
-
             memset(&bodies.momentum[new_body], 0, bodies.momentum[new_body].sizeof);
             bodies.idle_counters[new_body] = 0;
             bodies.properties[new_body] = properties;
             bodies.transforms[new_body] = identity_transform;
 
+            // set collider position
             colliders.boxes.transforms[collider] = identity_transform;
             colliders.boxes.transforms[collider].body = new_body;
 
+            // set collider size
             colliders.boxes.data[collider].size[0] = collider_x;
             colliders.boxes.data[collider].size[1] = collider_y;
             colliders.boxes.data[collider].size[2] = collider_z;
@@ -108,10 +155,31 @@ class NudgeRealm {
             return new_body;
         }
 
-        /// create a sphere body, and return the id
+        // public void remove_box(uint id) {
+        //     // look up collider id
+        //     auto coll_id = 0; // magic
+
+        //     // clear collider size
+        //     colliders.boxes.data[coll_id].size[0] = 0;
+        //     colliders.boxes.data[coll_id].size[1] = 0;
+        //     colliders.boxes.data[coll_id].size[2] = 0;
+
+        //     // clear collider position
+        //     colliders.boxes.transforms[coll_id] = identity_transform;
+        //     colliders.boxes.transforms[coll_id].body = 0;
+
+        //     // clear body values
+        //     // ?
+
+        //     colliders.boxes.count--;
+        //     bodies.count--;
+        // }
+
+        /// create a sphere collider, and return the id
         public uint add_sphere(float mass, float radius) {
-            if (bodies.count == max_bodies || colliders.spheres.count == max_spheres)
-                return 0;
+            if (bodies.count == max_bodies || colliders.spheres.count == max_spheres) {
+                assert(0, "max body count exceeded (spheres)");
+            }
 
             uint new_body = bodies.count++;
             uint collider = colliders.spheres.count++;
