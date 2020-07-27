@@ -75,8 +75,8 @@ class NudgeRealm {
         /// append a new body, return the id
         public uint append_body(ref nudge.Transform transform,
                 ref nudge.BodyProperties properties, ref nudge.BodyMomentum momentum) {
-            if (bodies.count == max_bodies) {
-                assert(0, "max body count exceeded (boxes)");
+            if (bodies.count >= max_bodies) {
+                assert(0, "max body count exceeded");
             }
 
             uint id = bodies.count++;
@@ -90,7 +90,7 @@ class NudgeRealm {
         }
 
         /// pop the last body off
-        public void pop_last_body(uint id) {
+        public void pop_last_body() {
             bodies.count--;
         }
 
@@ -103,6 +103,7 @@ class NudgeRealm {
             bodies.idle_counters[id] = 0;
         }
 
+        /// swap two bodies given their indices
         public void swap_bodies(uint id_src, uint id_dst) {
             auto tmp_transform = bodies.transforms[id_dst];
             bodies.transforms[id_dst] = bodies.transforms[id_src];
@@ -119,6 +120,50 @@ class NudgeRealm {
             auto tmp_idle = bodies.idle_counters[id_dst];
             bodies.idle_counters[id_dst] = bodies.idle_counters[id_src];
             bodies.idle_counters[id_src] = tmp_idle;
+        }
+
+        /// append a box collider and get its index
+        public uint append_box_collider(uint body_id,
+                ref nudge.BoxCollider collider, ref nudge.Transform transform, uint tag) {
+            if (colliders.boxes.count >= max_bodies) {
+                assert(0, "max body count exceeded (boxes)");
+            }
+
+            uint box_id = colliders.boxes.count++;
+
+            colliders.boxes.tags[box_id] = tag;
+            colliders.boxes.data[box_id] = collider;
+            colliders.boxes.transforms[box_id] = transform;
+            colliders.boxes.transforms[box_id].body = body_id;
+
+            return box_id;
+        }
+
+        /// zero the data of a box collider index
+        public void clear_box_collider(uint id) {
+            colliders.boxes.tags[id] = 0;
+            memset(&colliders.boxes.data[id], 0, colliders.boxes.data[id].sizeof);
+            memset(&colliders.boxes.transforms[id], 0, colliders.boxes.transforms[id].sizeof);
+        }
+
+        /// swap two box colliders given their indices
+        public void swap_box_colliders(uint id_src, uint id_dst) {
+            auto tmp_transform = colliders.boxes.transforms[id_dst];
+            colliders.boxes.transforms[id_dst] = colliders.boxes.transforms[id_src];
+            colliders.boxes.transforms[id_src] = tmp_transform;
+
+            auto tmp_data = colliders.boxes.data[id_dst];
+            colliders.boxes.data[id_dst] = colliders.boxes.data[id_src];
+            colliders.boxes.data[id_src] = tmp_data;
+
+            auto tmp_tag = colliders.boxes.tags[id_dst];
+            colliders.boxes.tags[id_dst] = colliders.boxes.tags[id_src];
+            colliders.boxes.tags[id_src] = tmp_tag;
+        }
+
+        /// pop the last box collider off
+        public void pop_last_box_collider() {
+            colliders.boxes.count--;
         }
 
         /// create a box collider, and return the id
