@@ -213,3 +213,12 @@ class NudgeRealm {
         }
     }
 }
+
+unittest {
+    // try setting one up
+
+    auto realm = new NudgeRealm(64, 64, 64);
+
+    realm.allocate();
+    realm.destroy();
+}
