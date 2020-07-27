@@ -125,7 +125,7 @@ class NudgeRealm {
         /// append a box collider and get its index
         public uint append_box_collider(uint body_id,
                 ref nudge.BoxCollider collider, ref nudge.Transform transform, uint tag) {
-            if (colliders.boxes.count >= max_bodies) {
+            if (colliders.boxes.count >= max_boxes) {
                 assert(0, "max body count exceeded (boxes)");
             }
 
@@ -164,6 +164,50 @@ class NudgeRealm {
         /// pop the last box collider off
         public void pop_last_box_collider() {
             colliders.boxes.count--;
+        }
+
+        /// append a sphere collider and get its index
+        public uint append_sphere_collider(uint body_id,
+                ref nudge.SphereCollider collider, ref nudge.Transform transform, uint tag) {
+            if (colliders.spheres.count >= max_spheres) {
+                assert(0, "max body count exceeded (spheres)");
+            }
+
+            uint sphere_id = colliders.spheres.count++;
+
+            colliders.spheres.tags[sphere_id] = tag;
+            colliders.spheres.data[sphere_id] = collider;
+            colliders.spheres.transforms[sphere_id] = transform;
+            colliders.spheres.transforms[sphere_id].body = body_id;
+
+            return sphere_id;
+        }
+
+        /// zero the data of a sphere collider index
+        public void clear_sphere_collider(uint id) {
+            colliders.spheres.tags[id] = 0;
+            memset(&colliders.spheres.data[id], 0, colliders.spheres.data[id].sizeof);
+            memset(&colliders.spheres.transforms[id], 0, colliders.spheres.transforms[id].sizeof);
+        }
+
+        /// swap two sphere colliders given their indices
+        public void swap_sphere_colliders(uint id_src, uint id_dst) {
+            auto tmp_transform = colliders.spheres.transforms[id_dst];
+            colliders.spheres.transforms[id_dst] = colliders.spheres.transforms[id_src];
+            colliders.spheres.transforms[id_src] = tmp_transform;
+
+            auto tmp_data = colliders.spheres.data[id_dst];
+            colliders.spheres.data[id_dst] = colliders.spheres.data[id_src];
+            colliders.spheres.data[id_src] = tmp_data;
+
+            auto tmp_tag = colliders.spheres.tags[id_dst];
+            colliders.spheres.tags[id_dst] = colliders.spheres.tags[id_src];
+            colliders.spheres.tags[id_src] = tmp_tag;
+        }
+
+        /// pop the last sphere collider off
+        public void pop_last_sphere_collider() {
+            colliders.spheres.count--;
         }
 
         /// create a box collider, and return the id
