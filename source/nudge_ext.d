@@ -72,8 +72,8 @@ class NudgeRealm {
     }
 
     pragma(inline) {
-        /// create a new body, return the id
-        public uint insert_body(ref nudge.Transform transform,
+        /// append a new body, return the id
+        public uint append_body(ref nudge.Transform transform,
                 ref nudge.BodyProperties properties, ref nudge.BodyMomentum momentum) {
             if (bodies.count == max_bodies) {
                 assert(0, "max body count exceeded (boxes)");
@@ -87,6 +87,11 @@ class NudgeRealm {
             bodies.idle_counters[id] = 0;
 
             return id;
+        }
+
+        /// pop the last body off
+        public void pop_last_body(uint id) {
+            bodies.count--;
         }
 
         /// clear the data of a body with matching id
