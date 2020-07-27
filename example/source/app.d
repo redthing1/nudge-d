@@ -31,6 +31,10 @@ pragma(inline) {
 		r[1] = b[1] + a[3] * t[1] + a[2] * t[0] - a[0] * t[2];
 		r[2] = b[2] + a[3] * t[2] + a[0] * t[1] - a[1] * t[0];
 	}
+
+	static float rand_float() {
+		return cast(float)(rand() * (1.0f / (cast(float) RAND_MAX)));
+	}
 }
 
 void simulate() {
@@ -167,18 +171,15 @@ void main() {
 
 	// Add boxes.
 	for (uint i = 0; i < 1024; ++i) {
-		float sx = cast(float) rand() * (1.0f / cast(float) RAND_MAX) + 0.5f;
-		float sy = cast(float) rand() * (1.0f / cast(float) RAND_MAX) + 0.5f;
-		float sz = cast(float) rand() * (1.0f / cast(float) RAND_MAX) + 0.5f;
+		float sx = rand_float() + 0.5f;
+		float sy = rand_float() + 0.5f;
+		float sz = rand_float() + 0.5f;
 
 		uint new_body = realm.add_box(8.0f * sx * sy * sz, sx, sy, sz);
 
-		realm.bodies.transforms[new_body].position[0] += cast(float) rand() * (
-				1.0f / cast(float) RAND_MAX) * 10.0f - 5.0f;
-		realm.bodies.transforms[new_body].position[1] += cast(float) rand() * (
-				1.0f / cast(float) RAND_MAX) * 300.0f;
-		realm.bodies.transforms[new_body].position[2] += cast(float) rand() * (
-				1.0f / cast(float) RAND_MAX) * 10.0f - 5.0f;
+		realm.bodies.transforms[new_body].position[0] += rand_float() * 10.0f - 5.0f;
+		realm.bodies.transforms[new_body].position[1] += rand_float() * 300.0f;
+		realm.bodies.transforms[new_body].position[2] += rand_float() * 10.0f - 5.0f;
 
 		writefln("created box: %s, %s", realm.bodies.properties[new_body],
 				realm.bodies.transforms[new_body]);
@@ -186,16 +187,13 @@ void main() {
 
 	// Add spheres.
 	for (uint i = 0; i < 512; ++i) {
-		float s = cast(float) rand() * (1.0f / cast(float) RAND_MAX) + 0.5f;
+		float s = rand_float() + 0.5f;
 
 		uint new_body = realm.add_sphere(4.18879f * s * s * s, s);
 
-		realm.bodies.transforms[new_body].position[0] += cast(float) rand() * (
-				1.0f / cast(float) RAND_MAX) * 10.0f - 5.0f;
-		realm.bodies.transforms[new_body].position[1] += cast(float) rand() * (
-				1.0f / cast(float) RAND_MAX) * 300.0f;
-		realm.bodies.transforms[new_body].position[2] += cast(float) rand() * (
-				1.0f / cast(float) RAND_MAX) * 10.0f - 5.0f;
+		realm.bodies.transforms[new_body].position[0] += rand_float() * 10.0f - 5.0f;
+		realm.bodies.transforms[new_body].position[1] += rand_float() * 300.0f;
+		realm.bodies.transforms[new_body].position[2] += rand_float() * 10.0f - 5.0f;
 
 		writefln("created sphere: %s, %s", realm.bodies.properties[new_body],
 				realm.bodies.transforms[new_body]);
