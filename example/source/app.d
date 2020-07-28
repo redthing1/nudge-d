@@ -209,7 +209,7 @@ void main() {
 		uint collider_ix = realm.colliders.boxes.count++;
 
 		realm.colliders.boxes.transforms[collider_ix] = NudgeRealm.identity_transform;
-		realm.colliders.boxes.transforms[collider_ix].position[1] -= 20.0f;
+		realm.colliders.boxes.transforms[collider_ix].position[1] -= 10.0f;
 
 		realm.colliders.boxes.data[collider_ix].size[0] = 400.0f;
 		realm.colliders.boxes.data[collider_ix].size[1] = 10.0f;
@@ -217,8 +217,11 @@ void main() {
 		realm.colliders.boxes.tags[collider_ix] = collider_ix;
 	}
 
+	enum demo_boxes = 1024;
+	enum demo_spheres = 512;
+
 	// Add boxes.
-	for (uint i = 0; i < 1024; ++i) {
+	for (uint i = 0; i < demo_boxes; ++i) {
 		float collider_x = rand_float() + 0.5f;
 		float collider_y = rand_float() + 0.5f;
 		float collider_z = rand_float() + 0.5f;
@@ -227,7 +230,7 @@ void main() {
 				collider_x, collider_y, collider_z);
 
 		realm.bodies.transforms[new_body].position[0] += rand_float() * 10.0f - 5.0f;
-		realm.bodies.transforms[new_body].position[1] += rand_float() * 300.0f;
+		realm.bodies.transforms[new_body].position[1] += 10.0f + rand_float() * 300.0f;
 		realm.bodies.transforms[new_body].position[2] += rand_float() * 10.0f - 5.0f;
 
 		writefln("created box: %s, %s", realm.bodies.properties[new_body],
@@ -235,7 +238,7 @@ void main() {
 	}
 
 	// Add spheres.
-	for (uint i = 0; i < 512; ++i) {
+	for (uint i = 0; i < demo_spheres; ++i) {
 		float radius = rand_float() + 0.5f;
 
 		uint new_body = add_demo_sphere(4.18879f * radius * radius * radius, radius);
